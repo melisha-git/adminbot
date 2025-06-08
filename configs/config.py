@@ -1,7 +1,11 @@
 import logging
+import os
 
-# Положить docker - secrets на VPS
-BOT_TOKEN = '7583469448:AAFBpsi1p3vclTkZ0FjYTCENimy7ILfx7qg'
+BOT_TOKEN = os.getenv("BOT_TOKEN")
+
+if not BOT_TOKEN:
+    raise ValueError("BOT_TOKEN не задан!")
+
 CHANNEL_ID = None
 MAIN_USERNAMES: list = None
 
