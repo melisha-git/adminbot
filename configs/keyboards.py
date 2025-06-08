@@ -4,9 +4,8 @@ START_BUTTON = KeyboardButton('/start')
 NEW_MESSAGE_BUTTON = KeyboardButton('/new_message')
 STOP_BUTTON = KeyboardButton('/stop')
 
-TYPES_BUTTON = KeyboardButton('/set_type')
-MESSAGE_BUTTON = KeyboardButton('/set_message')
-TAGS_BUTTON = KeyboardButton('/set_tags')
+TYPES_BUTTON = KeyboardButton('/type')
+MESSAGE_BUTTON = KeyboardButton('/message')
 PREVIEW_BUTTON = KeyboardButton('/preview')
 PUBLISH_BUTTON = KeyboardButton('/publish')
 
@@ -19,7 +18,7 @@ start_keyboard = [
 ]
 
 new_message_keyboard = [
-    [TYPES_BUTTON, MESSAGE_BUTTON, TAGS_BUTTON, PREVIEW_BUTTON, PUBLISH_BUTTON]
+    [TYPES_BUTTON, MESSAGE_BUTTON, PREVIEW_BUTTON, PUBLISH_BUTTON]
 ]
 
 stop_keyboard = [

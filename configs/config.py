@@ -2,8 +2,8 @@ import logging
 
 # Положить docker - secrets на VPS
 BOT_TOKEN = '7583469448:AAFBpsi1p3vclTkZ0FjYTCENimy7ILfx7qg'
-CHANNEL_ID = '@testtchki'
-MAIN_USERNAME = {'melisssha'}
+CHANNEL_ID = None
+MAIN_USERNAMES: list = None
 
 logging.basicConfig(
     level=logging.INFO,

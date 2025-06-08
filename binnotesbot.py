@@ -3,6 +3,8 @@ import configs.keyboards as keyboards
 import configs.types as types
 import message_state as message_state
 import re
+from deep_translator import GoogleTranslator
+import yake
 
 from telegram.constants import ParseMode
 from telegram import Update, ReplyKeyboardMarkup, ReplyKeyboardRemove, KeyboardButton
@@ -17,29 +19,61 @@ from telegram.ext import (
 
 logger = config.logger
 
-MAIN_MENU, SELECT_TYPE, ENTER_MESSAGE, ENTER_TAGS = range(4)
+SELECT_TYPE, ENTER_MESSAGE = range(2)
+
+ENTER_CHANNEL, ENTER_USERNAMES = range(2)
 
 def restricted(func):
     async def wrapped(update: Update, context: ContextTypes.DEFAULT_TYPE):
         username = update.effective_user.username
-        if username not in config.MAIN_USERNAME:
+        if config.MAIN_USERNAMES and username not in config.MAIN_USERNAMES:
             logger.warning(f'Пользователь {username} пытался получить доступ')
             await update.message.reply_text("❌ У вас нет доступа к этой команде.")
             return
         return await func(update, context)
     return wrapped
 
+def restricted_config(func):
+    async def wrapped_config(update: Update, context: ContextTypes.DEFAULT_TYPE):
+        if config.CHANNEL_ID is None or config.MAIN_USERNAMES is None:
+            logger.warning(f'Не настроен config')
+            await update.message.reply_text("❌ Настройте конфиг. Введите /start")
+            return
+        return await func(update, context)
+    return wrapped_config
+
 @restricted
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     logger.info('Обработка Start')
     
     await update.message.reply_text(
-        f'Привет! Я - админ - бот канала {config.CHANNEL_ID}',
+        f'Привет! Я - лучший админ-бот 2000 канала',
+        reply_markup=ReplyKeyboardRemove(),
+    )
+    
+    if config.CHANNEL_ID and config.MAIN_USERNAMES:
+        await update.message.reply_text(
+        f'У меня все данные о конфиге',
         reply_markup=ReplyKeyboardMarkup(keyboards.start_keyboard, resize_keyboard=True),
+        parse_mode=ParseMode.HTML,
         disable_web_page_preview=True
+        )
+        
+        return ConversationHandler.END
+    
+    await update.message.reply_text(
+        f'У меня недостаточно данных о конфиге, укажи их',
+        reply_markup=ReplyKeyboardRemove(),
+    )
+    
+    await update.message.reply_text(
+        f'Введите канал, который мне необходимо администировать',
+        reply_markup=ReplyKeyboardRemove(),
     )
     
     logger.debug('Обработка Start завершена')
+    
+    return ENTER_CHANNEL
 
 @restricted
 async def stop_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -54,6 +88,7 @@ async def stop_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     logger.debug('Обработка Stop завершена')
 
 @restricted
+@restricted_config
 async def new_message_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     logger.info('Обработка New Message')
     
@@ -69,6 +104,7 @@ async def new_message_command(update: Update, context: ContextTypes.DEFAULT_TYPE
     logger.debug('Обработка New Message завершена')
 
 @restricted
+@restricted_config
 async def preview(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if 'state' not in context.user_data:
         context.user_data['state'] = message_state.State()
@@ -97,6 +133,7 @@ async def preview(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 @restricted
+@restricted_config
 async def publish(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if 'state' not in context.user_data:
         context.user_data['state'] = message_state.State()
@@ -121,8 +158,16 @@ async def publish(update: Update, context: ContextTypes.DEFAULT_TYPE):
         parse_mode=ParseMode.HTML,
         disable_web_page_preview=True
     )
+    
+    await update.message.reply_text(
+        f"Ваше сообщение успешно отправлено:\n",
+        reply_markup=ReplyKeyboardMarkup(keyboards.start_keyboard, resize_keyboard=True),
+        parse_mode=ParseMode.HTML,
+        disable_web_page_preview=True
+    )
 
 @restricted
+@restricted_config
 async def set_type_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = 'Выберите тип сообщения:\n'
     
@@ -145,6 +190,7 @@ async def set_type_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     return SELECT_TYPE
 
 @restricted
+@restricted_config
 async def set_message_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
         'Введите сообщение:',
@@ -154,18 +200,9 @@ async def set_message_command(update: Update, context: ContextTypes.DEFAULT_TYPE
     
     return ENTER_MESSAGE
 
-@restricted
-async def set_tags_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text(
-        'Введите теги:',
-        reply_markup=ReplyKeyboardRemove(),
-        disable_web_page_preview=True
-    )
-    
-    return ENTER_TAGS
-
 
 @restricted
+@restricted_config
 async def type_chosen(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if 'state' not in context.user_data:
         context.user_data['state'] = message_state.State()
@@ -186,9 +223,10 @@ async def type_chosen(update: Update, context: ContextTypes.DEFAULT_TYPE):
         disable_web_page_preview=True
     )
     
-    return MAIN_MENU
+    return ConversationHandler.END
 
 @restricted
+@restricted_config
 async def enter_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if 'state' not in context.user_data:
         context.user_data['state'] = message_state.State()
@@ -197,32 +235,44 @@ async def enter_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     user_state.message = update.message.text_html
     
+    translated = GoogleTranslator(source='auto', target='en').translate(user_state.message)
+    kw_extractor = yake.KeywordExtractor(lan="en", n=1, top=5)
+    keywords = kw_extractor.extract_keywords(translated)
+    user_state.tags = [kw.replace(' ', '_') for kw, _ in keywords]
+    
     await update.message.reply_text(
         f"Сообщение обновлено\nЧто дальше?",
         reply_markup=ReplyKeyboardMarkup(keyboards.new_message_keyboard, resize_keyboard=True),
         disable_web_page_preview=True
     )
     
-    return MAIN_MENU
+    return ConversationHandler.END
 
 @restricted
-async def enter_tags(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if 'state' not in context.user_data:
-        context.user_data['state'] = message_state.State()
-
-    user_state: message_state.State = context.user_data['state']
-    
-    raw_words = re.split(r'[,\s]+', update.message.text_html.strip())
-    
-    user_state.tags = [re.sub(r'^[^a-zA-Zа-яА-ЯёЁ]+', '', word) for word in raw_words if word]
+async def enter_channel_id(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    config.CHANNEL_ID = update.message.text_html
     
     await update.message.reply_text(
-        f"Теги обновлены\nЧто дальше?",
-        reply_markup=ReplyKeyboardMarkup(keyboards.new_message_keyboard, resize_keyboard=True),
+        'Теперь введите тех, у кого есть доступ к боту через пробел',
+        reply_markup=ReplyKeyboardRemove(),
         disable_web_page_preview=True
     )
     
-    return MAIN_MENU
+    return ENTER_USERNAMES
+
+@restricted
+async def enter_usernames(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    raw_words = re.split(r'[,\s]+', update.message.text_html.strip())
+    
+    config.MAIN_USERNAMES = [re.sub(r'^[^a-zA-Zа-яА-ЯёЁ]+', '', word) for word in raw_words if word]
+    
+    await update.message.reply_text(
+        'Вы успешно всё настроили',
+        reply_markup=ReplyKeyboardMarkup(keyboards.start_keyboard, resize_keyboard=True),
+        disable_web_page_preview=True
+    )
+    
+    return ConversationHandler.END
 
 @restricted
 async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -230,19 +280,34 @@ async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data['state'].default()
     return ConversationHandler.END
 
+@restricted
+async def cancel_setup(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text("Отменяю.")
+    config.CHANNEL_ID = None
+    config.MAIN_USERNAMES = None
+    return ConversationHandler.END
+
 if __name__ == '__main__':
     app = ApplicationBuilder().token(config.BOT_TOKEN).build()
     
-    app.add_handler(CommandHandler('start', start_command))
     app.add_handler(CommandHandler('stop', stop_command))
     app.add_handler(CommandHandler('new_message', new_message_command))
     app.add_handler(CommandHandler('preview', preview))
     app.add_handler(CommandHandler('publish', publish))
     
-    conv_type = ConversationHandler(
-        entry_points=[CommandHandler('set_type', set_type_command)],
+    conv_start = ConversationHandler(
+        entry_points=[CommandHandler('start', start_command)],
         states= {
-            MAIN_MENU: [CommandHandler('new_message', new_message_command)],
+            ENTER_CHANNEL: [MessageHandler(filters.TEXT & ~filters.COMMAND, enter_channel_id)],
+            ENTER_USERNAMES: [MessageHandler(filters.TEXT & ~filters.COMMAND, enter_usernames)]
+        },
+        fallbacks=[CommandHandler('cancel', cancel_setup)],
+        allow_reentry=True,
+    )
+    
+    conv_type = ConversationHandler(
+        entry_points=[CommandHandler('type', set_type_command)],
+        states= {
             SELECT_TYPE: [MessageHandler(filters.TEXT & ~filters.COMMAND, type_chosen)]
         },
         fallbacks=[CommandHandler('cancel', cancel)],
@@ -250,28 +315,17 @@ if __name__ == '__main__':
     )
     
     conv_message = ConversationHandler(
-        entry_points=[CommandHandler('set_message', set_message_command)],
+        entry_points=[CommandHandler('message', set_message_command)],
         states= {
-            MAIN_MENU: [CommandHandler('new_message', new_message_command)],
             ENTER_MESSAGE: [MessageHandler(filters.TEXT & ~filters.COMMAND, enter_message)],
         },
         fallbacks=[CommandHandler('cancel', cancel)],
         allow_reentry=True,
     )
     
-    conv_tags = ConversationHandler(
-        entry_points=[CommandHandler('set_tags', set_tags_command)],
-        states= {
-            MAIN_MENU: [CommandHandler('new_message', new_message_command)],
-            ENTER_TAGS: [MessageHandler(filters.TEXT & ~filters.COMMAND, enter_tags)]
-        },
-        fallbacks=[CommandHandler('cancel', cancel)],
-        allow_reentry=True,
-    )
-    
+    app.add_handler(conv_start)
     app.add_handler(conv_type)
     app.add_handler(conv_message)
-    app.add_handler(conv_tags)
     
     logger.info('Бот запущен!')
     app.run_polling()
