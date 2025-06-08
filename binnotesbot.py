@@ -238,7 +238,7 @@ async def enter_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     translated = GoogleTranslator(source='auto', target='en').translate(user_state.message)
     kw_extractor = yake.KeywordExtractor(lan="en", n=1, top=5)
     keywords = kw_extractor.extract_keywords(translated)
-    user_state.tags = [kw.replace(' ', '_') for kw, _ in keywords]
+    user_state.tags = [kw.replace(' ', '_').lower() for kw, _ in keywords]
     
     await update.message.reply_text(
         f"Сообщение обновлено\nЧто дальше?",
