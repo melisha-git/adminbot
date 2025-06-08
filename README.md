@@ -4,7 +4,7 @@
 # Использование
 
 ```shell
-docker run -e BOT_TOKEN=your_token esaveliev/adminbot
+docker run -d -e BOT_TOKEN=your_token esaveliev/adminbot
 ```
 
 # Дальнейшее развитие
