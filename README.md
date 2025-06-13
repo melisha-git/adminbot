@@ -4,12 +4,9 @@
 # Использование
 
 ```shell
-docker run -d -e BOT_TOKEN=your_token esaveliev/adminbot
+docker run -d -e BOT_TOKEN="your_token" SIGN="your_sign" esaveliev/adminbot
 ```
 
 # Дальнейшее развитие
 
-- [x] Добавить исправление типов при каждом рестарте
-- [x] Добавить типы для всех пользователей
-- [x] Уникальные подписи
-- [x] Добавить автоматические теги
+- [ ] Обновить описание
