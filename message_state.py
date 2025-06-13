@@ -1,8 +1,5 @@
-import configs.types as types
-
-
 class State:
-    type: types.Types
+    type: int
     message: str
     tags: list
     

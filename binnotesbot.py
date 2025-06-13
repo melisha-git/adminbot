@@ -1,6 +1,6 @@
 import configs.config as config
 import configs.keyboards as keyboards
-import configs.types as types
+import configs.types as ctypes
 import message_state as message_state
 import re
 from deep_translator import GoogleTranslator
@@ -22,6 +22,8 @@ logger = config.logger
 SELECT_TYPE, ENTER_MESSAGE = range(2)
 
 ENTER_CHANNEL, ENTER_USERNAMES = range(2)
+
+types = ctypes.TypeManager()
 
 def restricted(func):
     async def wrapped(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -108,18 +110,19 @@ async def new_message_command(update: Update, context: ContextTypes.DEFAULT_TYPE
 async def preview(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if 'state' not in context.user_data:
         context.user_data['state'] = message_state.State()
-        
+    
     user_state: message_state.State = context.user_data['state']
     
     text = ''
     
-    if user_state.type:
+    if user_state.type is not None:
         text += f'<b>{types.type_to_string(user_state.type)}</b>\n\n'
     
     if user_state.message:
         text += f'{user_state.message}\n\n'
     
-    text += 'Segmentation fault (core dumped)\n\n'
+    if config.SIGN:
+        text += f'{config.SIGN}\n\n'
     
     if user_state.tags:
         tags_text = ' '.join(f'#{tag}' for tag in user_state.tags)
@@ -146,7 +149,9 @@ async def publish(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     text = f'<b>{types.type_to_string(user_state.type)}</b>\n\n'
     text += f'{user_state.message}\n\n'
-    text += 'Segmentation fault (core dumped)\n\n'
+    
+    if config.SIGN:
+        text += f'{config.SIGN}\n\n'
     
     if user_state.tags:
         tags_text = ' '.join(f'#{tag}' for tag in user_state.tags)
@@ -173,10 +178,10 @@ async def set_type_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     type_keyboard = [
         [KeyboardButton(types.type_to_string(t))]
-        for t in types.Types
+        for t in types.get_types()
     ]
     
-    for type in types.Types:
+    for type in types.get_types():
         string_type = types.type_to_string(type)
         text += f'<b>{string_type}</b>\n'
     
