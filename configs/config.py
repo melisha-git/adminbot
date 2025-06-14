@@ -7,6 +7,7 @@ if not BOT_TOKEN:
     raise ValueError("BOT_TOKEN не задан!")
 
 SIGN = os.getenv("SIGN")
+TYPE_PATH = os.getenv("TYPE_PATH")
 CHANNEL_ID = None
 MAIN_USERNAMES: list = None
 

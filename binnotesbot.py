@@ -48,6 +48,8 @@ def restricted_config(func):
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     logger.info('Обработка Start')
     
+    types.__init__()
+    
     await update.message.reply_text(
         f'Привет! Я - лучший админ-бот 2000 канала',
         reply_markup=ReplyKeyboardRemove(),

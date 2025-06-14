@@ -1,7 +1,18 @@
+import configs.config as config
+import os
+
 class TypeManager:
     def __init__(self):
-        with open('configs/types.conf', 'r', encoding='utf-8') as file:
-            lines = file.readlines()
+        types_path = 'configs/types.conf'
+        
+        if config.TYPE_PATH:
+            types_path = config.TYPE_PATH
+        
+        lines = ''
+        
+        if os.path.exists(types_path):
+            with open(types_path, 'r', encoding='utf-8') as file:
+                lines = file.readlines()
         
         self.type_to_idx = {line.strip(): index for index, line in enumerate(lines)}
         self.idx_to_type = {index: line.strip() for index, line in enumerate(lines)}
